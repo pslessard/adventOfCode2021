@@ -4,3 +4,7 @@
 *$py.class
 
 .vscode
+
+**/target/
+
+**/.DS_Store/
