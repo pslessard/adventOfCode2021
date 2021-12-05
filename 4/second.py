@@ -8,6 +8,8 @@ import numpy as np
 import pandas as pd
 from functools import reduce
 
+import time
+
 
 # https://stackoverflow.com/a/56231781
 def _reduce_and(series):
@@ -17,88 +19,53 @@ def _reduce_or(series):
     return reduce(np.logical_or, series)
 
 
-class Board:
-    def __init__(self, lines: List[str], board_num: int):
-        self._numbers = pd.DataFrame([parse_line(line) for line in lines])
-        self._called = pd.DataFrame(np.zeros(self._numbers.shape, dtype=bool))
-        self.id = board_num
-        self.won = False
-
-    def __repr__(self):
-        string = ''
-        string += repr(self._numbers)
-        string += '\n'
-        string += repr(self._called)
-        return string
-
-    def _is_orthogonal_win(self) -> Tuple[bool, np.ndarray]:
-        vertical = self._called.aggregate(_reduce_and, axis=0)
-        if vertical.aggregate(_reduce_or):
-            return True, self._numbers[vertical == True].to_numpy()
-
-        horizontal = self._called.aggregate(_reduce_and, axis=1)
-        if horizontal.aggregate(_reduce_or):
-            return True, self._numbers[horizontal == True].to_numpy()
-
-        return False, None
-
-    def _is_diagonal_win(self) -> Tuple[bool, np.ndarray]:
-        def _diagonal_is_win(df) -> bool:
-            return np.logical_and.reduce(np.diagonal(df), initial=False)
-
-        first = _diagonal_is_win(self._called)
-        if first:
-            return True, np.diagonal(self._numbers)
-
-        second = _diagonal_is_win(self._called[self._called.columns[::-1]])
-        if second:
-            return True, np.diagonal(self._numbers[self._numbers.columns[::-1]])
-
-        return False, None
-
-    def is_win(self) -> Tuple[bool, np.ndarray]:
-        win, numbers = self._is_orthogonal_win()
-        if win:
-            self.won = True
-            return win, numbers
-        
-        win, numbers = self._is_diagonal_win()
-        if win:
-            self.won = True
-            return win, numbers
-        
-        return False, None
-
-    def call_num(self, num: int) -> bool:
-        self._called[self._numbers == num] = True
-        return self.is_win()
-
-    def sum(self) -> int:
-        return np.add.reduce(np.add.reduce(self._numbers[self._called == False].fillna(0)))
+def parse_lines(lines):
+    return [line.split() for line in lines]
 
 
-
-def parse_input(lines: List[str]) -> Tuple[List[int], List[Type[Board]]]:
+def parse_input(lines: List[str]):
     lines = [line for line in lines if line]
 
     called = [int(val) for val in lines.pop(0).split(',')]
 
-    boards = []
-
     assert(len(lines) % 5 == 0)
-    for board_start in range(0, len(lines), 5):
-        boards.append(Board(lines[board_start:board_start+5], board_start / 5))
+    boards = np.array([parse_lines(lines[board_start:board_start+5]) for board_start in range(0, len(lines), 5)])
+
+    names = ['board', 'row', 'column']
+    index = pd.MultiIndex.from_product([range(dimension) for dimension in boards.shape], names=names)
+    df = pd.DataFrame({'boards': boards.flatten()}, index=index)['boards']
+    df = df.apply(pd.to_numeric)
+
+    df = df.unstack(level='row')
     
-    return called, boards
+    return called, df
 
 
 def parse_line(line: str) -> List[int]:
     return [int(num) for num in line.split()]
 
 
+def call_num(boards, num):
+    boards[boards == num] = np.nan
+
+
+def _diagonal_is_win(df) -> bool:
+    return np.logical_and.reduce(np.diagonal(df), initial=False)
+
+
+def board_is_not_win(board):
+    called = board.isnull()
+    return not (
+        called.aggregate(_reduce_and, axis=0).aggregate(_reduce_or) or
+        called.aggregate(_reduce_and, axis=1).aggregate(_reduce_or) or
+        _diagonal_is_win(called) or
+        _diagonal_is_win(called[called.columns[::-1]]))
+
 if (__name__ == "__main__"):
     example = False
     # example = True
+    
+    start = time.time()
 
     script_path = Path(os.path.realpath(__file__))
     if example:
@@ -111,34 +78,27 @@ if (__name__ == "__main__"):
         lines = util.get_input(script_path.parent.name)
         
     lines = [line.strip() for line in lines]
-    # print(lines)
 
     called, boards = parse_input(lines)
 
-    num_won = 0
-    game_over = False
+    mid = time.time()
+
+    last = -1
+    score = -1
+
     for num in called:
-        # print('calling', num)
-        for board in boards:
-            if board.won:
-                continue
-
-            is_win, numbers = board.call_num(num)
-            if is_win:
-                num_won += 1
-                print('Won:', board.id+1)
-                
-                if num_won == len(boards):
-                    print('Loser:', board.id+1)
-                    # print(board)
-                    print(numbers)
-
-                    sum = board.sum()
-                    print(sum)
-                    print(sum * num)
-
-                    game_over = True
-                    break
-
-        if game_over:
+        call_num(boards, num)
+        if (len(boards.groupby('board')) > 1):
+            boards = boards.groupby('board').filter(board_is_not_win)
+        else:
+            last = num
+            score = boards.aggregate(sum).aggregate(sum)
             break
+    
+    print('loser', last, score)
+    print(last * score)
+
+    end = time.time()
+
+    print('Finished parsing in', mid - start)
+    print('Finished in', end - start)
