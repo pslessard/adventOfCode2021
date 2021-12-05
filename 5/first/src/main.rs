@@ -6,43 +6,60 @@ use std::cmp;
 
 
 fn main() {
-    // file reading courtesy of https://doc.rust-lang.org/rust-by-example/std_misc/file/read_lines.html
     use std::time::Instant;
-    let start = Instant::now();
 
+    let mut vectors: Vec<((i16, i16), (i16, i16))> = Vec::new();
+
+    let mut x_max: usize = 0;
+    let mut y_max: usize = 0;
+
+    // file reading courtesy of https://doc.rust-lang.org/rust-by-example/std_misc/file/read_lines.html
     // File hosts must exist in current path before this produces output
     if let Ok(lines) = read_lines("../input.txt") {
-        // Consumes the iterator, returns an (Optional) String
-
-        let mut plotted = HashSet::new();
-        let mut danger = HashSet::new();
-
         for line in lines {
             let line = line.unwrap();
             let str_coords = line.split(" -> ");
 
-            let mut coords: Vec<(i32, i32)> = Vec::new();
+            let mut coords: Vec<(i16, i16)> = Vec::new();
 
             for coord in str_coords {
                 let split: Vec<&str> = coord.split(",").collect();
-                let x: i32 = split[0].parse::<i32>().unwrap();
-                let y: i32 = split[1].parse::<i32>().unwrap();
+                
+                let x: i16 = split[0].parse::<i16>().unwrap();
+                let y: i16 = split[1].parse::<i16>().unwrap();
+
+                if x as usize >= x_max {
+                    x_max = x as usize + 1;
+                }
+                if y as usize >= y_max {
+                    y_max = y as usize + 1;
+                }
 
                 coords.push((x, y));
             }
 
-            plot_line(coords[0], coords[1], &mut plotted, &mut danger);
+            vectors.push((coords[0], coords[1]));
+        }
+
+        let now = Instant::now();
+
+        let mut plotted = vec![vec![0u8; y_max]; x_max];
+        let mut danger = HashSet::new();
+
+        for vector in &vectors {
+            plot_line(vector.0, vector.1, &mut plotted, &mut danger);
         }
 
         println!("Number of dangerous areas: {}", danger.len());
+
+        println!("Finished in : {:.2?}", now.elapsed())
     }
     else {
         println!("Failed to read input file")
     }
-
-    println!("Finished in : {:.2?}", start.elapsed())
 }
 
+// file reading courtesy of https://doc.rust-lang.org/rust-by-example/std_misc/file/read_lines.html
 // The output is wrapped in a Result to allow matching on errors
 // Returns an Iterator to the Reader of the lines of the file.
 fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
@@ -51,9 +68,9 @@ where P: AsRef<Path>, {
     Ok(io::BufReader::new(file).lines())
 }
 
-fn plot_line(start: (i32, i32), end: (i32, i32), plotted: &mut HashSet<(i32, i32)>, danger: &mut HashSet<(i32, i32)>) {
-    // println!("Plotting: {:?} -> {:?}", start, end);
+type Plotted = Vec<Vec<u8>>;
 
+fn plot_line(start: (i16, i16), end: (i16, i16), plotted: &mut Plotted, danger: &mut HashSet<(i16, i16)>) {
     let x_diff = end.0 - start.0;
     let y_diff = end.1 - start.1;
 
@@ -62,7 +79,6 @@ fn plot_line(start: (i32, i32), end: (i32, i32), plotted: &mut HashSet<(i32, i32
 
     let first = false;
     if first && x_direction != 0 && y_direction != 0 {
-        // println!("Skipping");
         return;
     }
 
@@ -74,11 +90,12 @@ fn plot_line(start: (i32, i32), end: (i32, i32), plotted: &mut HashSet<(i32, i32
     }
 }
 
-fn plot(coord: (i32, i32), plotted: &mut HashSet<(i32, i32)>, danger: &mut HashSet<(i32, i32)>) {
-    // println!("  Plotting: {:?}", coord);
-    let added = plotted.insert(coord.clone());
-    if !added {
-        // println!("    DANGER! {:?}", coord);
+fn plot(coord: (i16, i16), plotted: &mut Plotted, danger: &mut HashSet<(i16, i16)>) {
+    let point: &mut u8 = &mut plotted[coord.0 as usize][coord.1 as usize];
+    if point == &1 {
         danger.insert(coord);
+    }
+    else {
+        *point = 1;
     }
 }
