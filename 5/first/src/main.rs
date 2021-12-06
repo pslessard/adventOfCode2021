@@ -3,11 +3,10 @@ use std::io::{self, BufRead};
 use std::path::Path;
 use std::collections::HashSet;
 use std::cmp;
+use std::time::Instant;
 
 
 fn main() {
-    use std::time::Instant;
-
     let mut vectors: Vec<((i16, i16), (i16, i16))> = Vec::new();
 
     let mut x_max: usize = 0;

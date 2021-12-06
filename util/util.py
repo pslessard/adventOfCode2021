@@ -1,8 +1,9 @@
 import requests
 import os
+import sys
 
-def get_input(day: int):
-    with open(os.path.expanduser('~/.adventOfCodeSession'), 'r') as fd:
+def get_input(day: int, session_path: str = '~/.adventOfCodeSession'):
+    with open(os.path.expanduser(session_path), 'r') as fd:
         session = fd.readline().strip()
     
     cookies = dict(session=session)
@@ -11,3 +12,9 @@ def get_input(day: int):
     r = requests.get(url, cookies=cookies)
     
     return r.text.splitlines()
+
+
+if __name__ == "__main__":
+    lines = get_input(sys.argv[1], '~/.session')
+    with open(f'{sys.argv[1]}/input.txt', 'w') as fd:
+        fd.writelines(lines)
