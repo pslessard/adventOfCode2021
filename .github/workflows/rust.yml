@@ -23,4 +23,4 @@ jobs:
         toolchain: nightly
         components: rustfmt, clippy
     - name: Benchmark
-      run: cargo bench
+      run: cargo +nightly bench
