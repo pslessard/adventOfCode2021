@@ -21,4 +21,4 @@ jobs:
         profile: minimal
         toolchain: nightly
         components: rustfmt, clippy
-        run: cargo bench
+    - run: cargo bench
