@@ -34,8 +34,12 @@ use std::path::Path;
     // println!("{:?}", response.send().unwrap().text());
 // }
 
-pub fn get_input(day: u8) -> Vec<String> {
-    if let Ok(lines) = read_lines(format!("{}/input.txt", day)) {
+pub fn get_input(day: u8, real: bool) -> Vec<String> {
+    let filename = match real {
+        false => "example",
+        true => "input"
+    };
+    if let Ok(lines) = read_lines(format!("{}/{}.txt", day, filename)) {
         lines.map(|line| line.unwrap()).collect()
     }
     else {

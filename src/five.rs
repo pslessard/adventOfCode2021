@@ -9,7 +9,7 @@ extern crate test;
 type Vectors = Vec<((i16, i16), (i16, i16))>;
 
 pub fn main() {
-    let (vectors, x_max, y_max) = parse_input(utils::get_input(5));
+    let (vectors, x_max, y_max) = parse_input(utils::get_input(5, true));
 
     let now = Instant::now();
 
@@ -98,7 +98,7 @@ fn plot(coord: (i16, i16), plotted: &mut Plotted, danger: &mut HashSet<(i16, i16
 
 #[bench]
 fn bench_simulation(b: &mut Bencher) -> () {
-    let (vectors, x_max, y_max) = parse_input(utils::get_input(5));
+    let (vectors, x_max, y_max) = parse_input(utils::get_input(5, true));
 
     b.iter(|| solve(&vectors, x_max, y_max));
 }

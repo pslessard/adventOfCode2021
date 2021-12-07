@@ -5,7 +5,7 @@ extern crate test;
 
 
 pub fn main() {
-    let line = utils::get_input(6)[0].clone();
+    let line = utils::get_input(6, true)[0].clone();
     let ages: Vec<u8> = parse_input(&line);
 
     let now = Instant::now();
@@ -69,7 +69,7 @@ fn run_simulation_pre_arranged(current_ages: &mut [u64; 9]) -> u64 {
 
 #[bench]
 fn bench_simulation(b: &mut Bencher) -> () {
-    let line = utils::get_input(6)[0].clone();
+    let line = utils::get_input(6, true)[0].clone();
     let ages: Vec<u8> = parse_input(&line);
 
     b.iter(|| run_simulation(&ages));
@@ -77,7 +77,7 @@ fn bench_simulation(b: &mut Bencher) -> () {
 
 #[bench]
 fn bench_simulation_pre_arranged(b: &mut Bencher) -> () {
-    let line = utils::get_input(6)[0].clone();
+    let line = utils::get_input(6, true)[0].clone();
     let ages: Vec<u8> = parse_input(&line);
 
     let mut current_ages = [0u64; 9];
