@@ -87,12 +87,12 @@ fn secondary_parse(
 fn set_initial_maps(
     display: Display,
     displays: &mut SeenDisplays,
-    display_indices: &mut [usize; 10],
+    display_indices: &mut [usize; 2],
     segments: &mut [u8; 7],
     bit_counts: &[u8; 256],
 ) {
     assert!(displays.len() >= 9);
-    assert!(display_indices.len() >= 9);
+    assert!(display_indices.len() == 2);
     match bit_counts[display as usize] {
         2 => {
             displays[1][0] = display;
@@ -102,31 +102,31 @@ fn set_initial_maps(
         3 => {
             displays[7][0] = display;
             segments[0] &= display;
-            segments[2] &= display;
-            segments[5] &= display;
+            // These can be exclusively determined from 2
+            // segments[2] &= display;
+            // segments[5] &= display;
         }
         4 => {
             displays[4][0] = display;
             segments[1] &= display;
-            segments[2] &= display;
             segments[3] &= display;
-            segments[5] &= display;
+            // These can be exclusively determined from 2
+            // segments[2] &= display;
+            // segments[5] &= display;
         }
         5 => {
-            displays[2][display_indices[2]] = display;
-            displays[3][display_indices[3]] = display;
-            displays[5][display_indices[5]] = display;
-            display_indices[2] += 1;
-            display_indices[3] += 1;
-            display_indices[5] += 1;
+            let idx = display_indices[0];
+            displays[2][idx] = display;
+            displays[3][idx] = display;
+            displays[5][idx] = display;
+            display_indices[0] += 1;
         }
         6 => {
-            displays[0][display_indices[0]] = display;
-            displays[6][display_indices[6]] = display;
-            displays[9][display_indices[9]] = display;
-            display_indices[0] += 1;
-            display_indices[6] += 1;
-            display_indices[9] += 1;
+            let idx = display_indices[1];
+            displays[0][idx] = display;
+            displays[6][idx] = display;
+            displays[9][idx] = display;
+            display_indices[1] += 1;
         }
         7 => {
             displays[8][0] = display;
@@ -229,7 +229,7 @@ fn decode_display(seen: &[Display]) -> [u8; 256] {
         get_one_vec(),
         get_three_vec()
     ];
-    let mut display_indices = [0usize; 10];
+    let mut display_indices = [0usize; 2];
 
     let mut segments = [0b1111111u8; 7];
 
@@ -327,5 +327,9 @@ mod tests {
             let file = File::create("flamegraph.svg").unwrap();
             report.flamegraph(file).unwrap();
         };
+
+        // Put this into Cargo.toml if you want a useful flamegraph
+        // [profile.release]
+        // debug = true
     }
 }
