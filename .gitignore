@@ -12,6 +12,8 @@
 **/.DS_Store/
 .DS_Store
 
+flamegraph.svg
+
 
 # Added by cargo
 

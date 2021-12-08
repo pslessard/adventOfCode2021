@@ -1,20 +1,19 @@
-use std::time::Instant;
-use test::Bencher;
-use std::fs::File;
-
 extern crate pprof;
 extern crate test;
 
-static mut cache_checks: u16 = 0;
-static mut cache_hits: u16 = 0;
-static mut cache_misses: u16 = 0;
+// static mut cache_checks: u16 = 0;
+// static mut cache_hits: u16 = 0;
+// static mut cache_misses: u16 = 0;
 
 pub fn main() {
     let mut coords = parse(utils::get_input(7, true)[0].clone());
-    let total_cost = solve(&mut coords);
+    let total_cost = solve_robust(&mut coords);
     println!("{:?}", total_cost);
 
-    unsafe { println!("cache checks: {} - hits: {}, misses: {}", cache_checks, cache_hits, cache_misses) }
+    let test = solve_fast(&mut coords);
+    println!("test: {:?}", test);
+
+    // unsafe { println!("cache checks: {} - hits: {}, misses: {}", cache_checks, cache_hits, cache_misses) }
 }
 
 fn get_nth_triangle(num: i64) -> i64 {
@@ -24,20 +23,23 @@ fn get_nth_triangle(num: i64) -> i64 {
 fn get_cost(coord: &i16, median: i16) -> i64 {
     let part1 = false;
     match part1 {
-        true => { (coord - median).abs() as i64 }
-        false => { get_nth_triangle((coord - median).abs() as i64) }
+        true => (coord - median).abs() as i64,
+        false => get_nth_triangle((coord - median).abs() as i64),
     }
 }
 
-fn get_total_cost(coords: &Vec<i16>, value: i16) -> i64 {
-    coords.iter().map(|coord| get_cost(coord, value)).fold(0i64, |l, r| l + r)
+fn get_total_cost(coords: &[i16], value: i16) -> i64 {
+    coords
+        .iter()
+        .map(|coord| get_cost(coord, value))
+        .sum()
 }
 
 fn get_last(coords: &[i16]) -> i16 {
     coords.last().copied().unwrap()
 }
 
-fn get_or_calc_total_cost(coords: &Vec<i16>, value: i16, values: &mut Vec<i64>) -> i64 {
+fn get_or_calc_total_cost(coords: &[i16], value: i16, values: &mut Vec<i64>) -> i64 {
     // unsafe { cache_checks += 1; }
     match values[value as usize] {
         0 => {
@@ -53,15 +55,17 @@ fn get_or_calc_total_cost(coords: &Vec<i16>, value: i16, values: &mut Vec<i64>) 
 }
 
 // coords must be sorted
-fn search_for_min(coords: &Vec<i16>, min: i16, mid: i16, max: i16, values: &mut Vec<i64>) -> i64 {
+fn search_for_min(coords: &[i16], min: i16, mid: i16, max: i16, values: &mut Vec<i64>) -> i64 {
     assert!(max >= min);
 
     if max == min {
-        return get_or_calc_total_cost(coords, min, values)
-    }
-    else if (max - min) <= 3 {
+        return get_or_calc_total_cost(coords, min, values);
+    } else if (max - min) <= 3 {
         // println!("{}, {}", min, max);
-        return (min..max).map(|val| get_or_calc_total_cost(coords, val, values)).min().unwrap();
+        return (min..max)
+            .map(|val| get_or_calc_total_cost(coords, val, values))
+            .min()
+            .unwrap();
     }
 
     // println!("mid {} - {} /2 = {}", max, min, mid);
@@ -72,7 +76,7 @@ fn search_for_min(coords: &Vec<i16>, min: i16, mid: i16, max: i16, values: &mut 
     let up_cost = get_or_calc_total_cost(coords, up, values);
 
     if up_cost < mid_cost {
-        return search_for_min(coords, mid, up, max, values)
+        return search_for_min(coords, mid, up, max, values);
     }
 
     let down = ((mid - min) / 2) + min;
@@ -80,24 +84,22 @@ fn search_for_min(coords: &Vec<i16>, min: i16, mid: i16, max: i16, values: &mut 
     let down_cost = get_or_calc_total_cost(coords, down, values);
 
     if down_cost < mid_cost {
-        return search_for_min(coords, min, down, mid, values)
-    }
-    else {
+        search_for_min(coords, min, down, mid, values)
+    } else {
         search_for_min(coords, down, mid, up, values)
     }
 }
 
-fn solve(coords: &mut Vec<i16>) -> i64 {
+// I'm sure this should work for all inputs
+fn solve_robust(coords: &mut Vec<i16>) -> i64 {
     coords.sort_unstable();
 
-    let mut values = vec![0i64; (get_last(coords)+1) as usize];
+    let mut values = vec![0i64; (get_last(coords) + 1) as usize];
 
     let first = coords[0];
     let median = coords[coords.len() / 2];
     assert!(coords.len() > 2);
     let last = get_last(coords);
-
-    // println!("{}, {}, {}", first, median, last);
 
     let bounds = match (last - median) - (first - median) {
         d if d < 0 => {
@@ -110,30 +112,67 @@ fn solve(coords: &mut Vec<i16>) -> i64 {
             let temp = median + ((last - median) / 2);
             (median, temp, last)
         }
-        _ => (first, median, last)
+        _ => (first, median, last),
     };
     // println!("{:?}", bounds);
 
-    search_for_min(&coords, bounds.0, bounds.1, bounds.2, &mut values)
+    search_for_min(coords, bounds.0, bounds.1, bounds.2, &mut values)
     // search_for_min(&coords, first, median, last, &mut values)
 }
 
-fn parse(line: String) -> Vec<i16> {
-    line.split(",").map(|num| num.parse().unwrap()).collect()
+fn solve_fast(coords: &mut Vec<i16>) -> i64 {
+    coords.sort_unstable();
+
+    let mut values = vec![0i64; (get_last(coords) + 1) as usize];
+
+    let average = coords.iter().fold(0f64, |l, r| (l as f64) + (*r as f64)) / (coords.len() as f64);
+    println!("average: {}", average);
+
+    let first = coords[0];
+    let median = coords[coords.len() / 2];
+    assert!(coords.len() > 2);
+    let last = get_last(coords);
+
+    // Most of the time, the average won't be an integer. In these cases, I think
+    // we want to round in the denser direction
+    let better_average: i16 = match (last - median) - (first - median) {
+        d if d < 0 => average.round() as i16, // If the top half of the values is more dense
+        _ => average as i16, // If the bottom half is more dense, or they are equivalent
+    };
+
+    get_or_calc_total_cost(coords, better_average, &mut values)
 }
 
-#[bench]
-fn bench_simulation(b: &mut Bencher) -> () {
-    let mut coords = parse(utils::get_input(7, true)[0].clone());
-    
-    // start profiling
-    // let guard = pprof::ProfilerGuard::new(1000).unwrap();
+fn parse(line: String) -> Vec<i16> {
+    line.split(',').map(|num| num.parse().unwrap()).collect()
+}
 
-    // run benchmark
-    b.iter(|| solve(&mut coords));
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use test::Bencher;
 
-    // if let Ok(report) = guard.report().build() {
-    //     let file = File::create("flamegraph.svg").unwrap();
-    //     report.flamegraph(file).unwrap();
-    // };
+    #[bench]
+    fn bench_robust(b: &mut Bencher) -> () {
+        let mut coords = parse(utils::get_input(7, true)[0].clone());
+
+        // start profiling
+        // let guard = pprof::ProfilerGuard::new(1000).unwrap();
+
+        // run benchmark
+        b.iter(|| solve_robust(&mut coords));
+
+        // if let Ok(report) = guard.report().build() {
+        //     let file = File::create("flamegraph.svg").unwrap();
+        //     report.flamegraph(file).unwrap();
+        // };
+    }
+
+    #[bench]
+    fn bench_fast(b: &mut Bencher) -> () {
+        let mut coords = parse(utils::get_input(7, true)[0].clone());
+
+        // run benchmark
+        b.iter(|| solve_fast(&mut coords));
+    }
 }
