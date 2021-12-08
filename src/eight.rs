@@ -1,7 +1,15 @@
+use smallvec::SmallVec;
+
 extern crate pprof;
 extern crate test;
 
 static mut BIT_COUNTS: [u8; 256] = [0u8; 256];
+
+type Display = u8;
+type Displays10 = SmallVec<[Display; 10]>;
+type Displays4 = SmallVec<[Display; 4]>;
+type SeenDisplays = [SmallVec<[Display; 3]>; 10];
+type ParsedPair = (SmallVec<[String; 10]>, SmallVec<[String; 4]>);
 
 pub fn main() {
     let mut bit_counts = [0u8; 256];
@@ -13,7 +21,7 @@ pub fn main() {
 
     let lines = parse(utils::get_input(8, true));
     {
-        let solved = solve_first(lines.clone());
+        let solved = solve_first(lines.iter().map(|pair| (pair.0.clone().into_vec(), pair.1.clone().into_vec())).collect());
         println!("{:?}", solved)
     }
 
@@ -21,6 +29,11 @@ pub fn main() {
         let solved = solve_second(&lines);
         println!("{:?}", solved)
     }
+}
+
+#[inline]
+fn is_unique_digit(size: usize) -> bool {
+    matches!(size, 2 | 4 | 3 | 7)
 }
 
 fn solve_first(lines: Vec<(Vec<String>, Vec<String>)>) -> usize {
@@ -37,15 +50,20 @@ fn solve_first(lines: Vec<(Vec<String>, Vec<String>)>) -> usize {
         .count()
 }
 
-#[inline]
-fn is_unique_digit(size: usize) -> bool {
-    matches!(size, 2 | 4 | 3 | 7)
+fn parse_displays10(display: &[String]) -> Displays10 {
+    display
+        .iter()
+        .map(|string| {
+            string
+                .bytes()
+                .map(|ch| (1u8 << (ch & 0b111)))
+                .fold(0, |l, r| l | r)
+                // .fold(0, |val, ch| val | (1u8 << ((ch as u8) & 0b111)))
+        })
+        .collect()
 }
 
-type Display = u8;
-type Displays = Vec<Display>;
-
-fn parse_displays(display: &[String]) -> Displays {
+fn parse_displays4(display: &[String]) -> Displays4 {
     display
         .iter()
         .map(|string| {
@@ -59,14 +77,12 @@ fn parse_displays(display: &[String]) -> Displays {
 }
 
 fn secondary_parse(
-    displays: &[(Vec<String>, Vec<String>)],
-) -> impl std::iter::Iterator<Item = (Vec<u8>, Vec<u8>)> + '_ {
+    displays: &[ParsedPair],
+) -> impl std::iter::Iterator<Item = (Displays10, Displays4)> + '_ {
     displays
         .iter()
-        .map(|pair| (parse_displays(&pair.0), parse_displays(&pair.1)))
+        .map(|pair| (parse_displays10(&pair.0), parse_displays4(&pair.1)))
 }
-
-type SeenDisplays = [Vec<Display>; 10];
 
 fn set_initial_maps(
     display: Display,
@@ -120,6 +136,8 @@ fn set_initial_maps(
         }
     }
 }
+
+
 
 fn remove_solved1(displays: &mut SeenDisplays, segments: u8, num: usize) {
     for (i, disp) in displays.iter_mut().enumerate() {
@@ -188,19 +206,28 @@ fn solve_09(displays: &mut SeenDisplays, segments: &mut [u8; 7]) {
 }
 
 fn decode_display(seen: &[Display]) -> [u8; 256] {
-    let one = vec![0u8];
-    let three = vec![0u8; 3];
+    let get_one_vec = || {
+        let mut one: SmallVec<[Display; 3]> = SmallVec::new();
+        unsafe { one.set_len(1) }
+        one
+    };
+    let get_three_vec = || {
+        let mut three: SmallVec<[Display; 3]> = SmallVec::new();
+        unsafe { three.set_len(3) }
+        three
+    };
+
     let mut displays: SeenDisplays = [
-        three.clone(),
-        one.clone(),
-        three.clone(),
-        three.clone(),
-        one.clone(),
-        three.clone(),
-        three.clone(),
-        one.clone(),
-        one,
-        three,
+        get_three_vec(),
+        get_one_vec(),
+        get_three_vec(),
+        get_three_vec(),
+        get_one_vec(),
+        get_three_vec(),
+        get_three_vec(),
+        get_one_vec(),
+        get_one_vec(),
+        get_three_vec()
     ];
     let mut display_indices = [0usize; 10];
 
@@ -237,7 +264,7 @@ fn decode_display(seen: &[Display]) -> [u8; 256] {
     conversions
 }
 
-fn solve_display(seen: &[Display], output: &Displays) -> usize {
+fn solve_display(seen: &[Display], output: &Displays4) -> usize {
     let conversions = decode_display(seen);
 
     output
@@ -246,7 +273,7 @@ fn solve_display(seen: &[Display], output: &Displays) -> usize {
         .fold(0usize, |value, digit| value * 10 + (digit as usize))
 }
 
-fn solve_second(lines: &[(Vec<String>, Vec<String>)]) -> usize {
+fn solve_second(lines: &[ParsedPair]) -> usize {
     let displays = secondary_parse(lines);
     let outputs = displays.map(|display_set| solve_display(&display_set.0, &display_set.1));
     //     .fold(0, |l, r| l + r)
@@ -257,15 +284,19 @@ fn solve_second(lines: &[(Vec<String>, Vec<String>)]) -> usize {
     sum
 }
 
-fn parse_partial_line(line: &str) -> Vec<String> {
+fn parse_seen(line: &str) -> SmallVec<[String; 10]> {
     line.split(' ').map(|s| s.to_string()).collect()
 }
 
-fn parse(lines: Vec<String>) -> Vec<(Vec<String>, Vec<String>)> {
+fn parse_output(line: &str) -> SmallVec<[String; 4]> {
+    line.split(' ').map(|s| s.to_string()).collect()
+}
+
+fn parse(lines: Vec<String>) -> Vec<ParsedPair> {
     lines
         .iter()
         .map(|line| line.split(" | ").collect())
-        .map(|list: Vec<&str>| (parse_partial_line(list[0]), parse_partial_line(list[1])))
+        .map(|list: Vec<&str>| (parse_seen(list[0]), parse_output(list[1])))
         .collect()
 }
 
