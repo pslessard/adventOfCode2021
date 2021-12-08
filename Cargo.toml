@@ -9,3 +9,6 @@ edition = "2021"
 utils = { path = "util/utils" }
 pprof = { version = "0.4", features = ["flamegraph"] }
 smallvec = "1.7.0"
+
+[profile.release]
+debug = true
