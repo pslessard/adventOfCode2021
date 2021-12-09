@@ -142,22 +142,14 @@ fn set_initial_maps(
     }
 }
 
-fn remove_solved06(displays: &mut SeenDisplays) {
-    assert!(displays[6].len() == 1);
-    let seg6 = displays[6][0];
-    assert!(displays[0].len() == 1);
-    let seg0 = displays[0][0];
-
-    displays[9].retain(|disp| *disp != seg0 && *disp != seg6);
-}
-
-fn remove_solved25(displays: &mut SeenDisplays) {
+fn remove_solved25(displays: &mut SeenDisplays, conversions: &mut [Display; 256]) {
     assert!(displays[5].len() == 1);
     assert!(displays[2].len() == 1);
     let seg2 = displays[2][0];
     let seg5 = displays[5][0];
 
-    displays[3].retain(|disp| *disp != seg2 && *disp != seg5);
+    let final_3 = *displays[3].iter().find(|&disp| *disp != seg2 && *disp != seg5).unwrap();
+    conversions[final_3 as usize] = 3;
 }
 
 fn solve_6(displays: &mut SeenDisplays, conversions: &mut [u8; 256], segments: &mut [u8; 7]) {
@@ -197,13 +189,12 @@ fn solve_09(displays: &mut SeenDisplays, conversions: &mut [u8; 256], segments: 
     assert!(displays[5].len() == 1);
     let segments_5 = displays[5][0];
 
-    displays[0].retain(|disp| *disp != segments_6 && ((*disp ^ segments_5) ^ segments[2]) != 0);
-
-    assert!(displays[0].len() == 1);
-    conversions[displays[0][0] as usize] = 0;
-    remove_solved06(displays);
-    assert!(displays[9].len() == 1);
-    conversions[displays[9][0] as usize] = 9;
+    let final_0 = *displays[0].iter().find(|&disp| *disp != segments_6 && ((*disp ^ segments_5) ^ segments[2]) != 0).unwrap();
+    conversions[final_0 as usize] = 0;
+    
+    let final_9 = *displays[9].iter().find(|&disp| *disp != final_0 && *disp != segments_6).unwrap();
+    conversions[final_9 as usize] = 9;
+    
 }
 
 fn decode_display(seen: &[Display]) -> [u8; 256] {
@@ -250,11 +241,10 @@ fn decode_display(seen: &[Display]) -> [u8; 256] {
     // known: [a,c,f], [1,2,4,6,7,8]
 
     solve_35(&mut displays, &mut conversions, &mut segments);
-    // known: [a,c,f], [1,2,3,4,5,6,7,8]
+    // known: [a,c,f], [1,2,4,5,6,7,8]
 
-    remove_solved25(&mut displays);
-    assert!(displays[3].len() == 1);
-    conversions[displays[3][0] as usize] = 3;
+    remove_solved25(&mut displays, &mut conversions);
+    // known: [a,c,f], [1,2,3,4,5,6,7,8]
 
     solve_d(&displays, &mut segments);
     // known: [a,c,d,f], [1,2,3,4,5,6,7,8]
