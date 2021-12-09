@@ -7,6 +7,7 @@ mod eight;
 mod five;
 mod seven;
 mod six;
+mod nine;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -16,6 +17,7 @@ fn main() {
             Ok(6) => six::main(),
             Ok(7) => seven::main(),
             Ok(8) => eight::main(),
+            Ok(9) => nine::main(),
             _ => {
                 println!("Enter the day as an argument")
             }

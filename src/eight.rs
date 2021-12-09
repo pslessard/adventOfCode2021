@@ -283,17 +283,17 @@ mod tests {
         unsafe { BIT_COUNTS = bit_counts }
 
         // start profiling
-        let guard = pprof::ProfilerGuard::new(100).unwrap();
+        // let guard = pprof::ProfilerGuard::new(100).unwrap();
 
         // run benchmark
         b.iter(|| solve_second(&lines));
 
         // build flamegraph
-        if let Ok(report) = guard.report().build() {
-            use std::fs::File;
-            let file = File::create("flamegraph.svg").unwrap();
-            report.flamegraph(file).unwrap();
-        };
+        // if let Ok(report) = guard.report().build() {
+        //     use std::fs::File;
+        //     let file = File::create("flamegraph.svg").unwrap();
+        //     report.flamegraph(file).unwrap();
+        // };
 
         // Put this into Cargo.toml if you want a useful flamegraph
         // [profile.release]
