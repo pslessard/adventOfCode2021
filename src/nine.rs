@@ -1,4 +1,5 @@
 use bit_vec::BitVec;
+use std::collections::VecDeque;
 
 extern crate pprof;
 extern crate test;
@@ -8,6 +9,7 @@ extern crate test;
 
 // }
 // type CaveMap = 
+type Point = (usize, usize);
 
 pub fn main() {
     let lines = parse(utils::get_input(9, false));
@@ -21,7 +23,7 @@ pub fn main() {
     }
 }
 
-fn solve_first(coords: &Vec<Vec<u8>>) -> u64 {
+fn solve_first(coords: &[Vec<u8>]) -> u64 {
     let mut total_risk = 0u64;
     for (y, row) in coords.iter().enumerate() {
         for (x, point) in row.iter().enumerate() {
@@ -37,7 +39,7 @@ fn solve_first(coords: &Vec<Vec<u8>>) -> u64 {
     total_risk
 }
 
-fn find_low_points(coords: &Vec<Vec<u8>>) -> Vec<(usize, usize)> {
+fn find_low_points(coords: &[Vec<u8>]) -> Vec<Point> {
     let mut low_points = Vec::new();
     for (y, row) in coords.iter().enumerate() {
         for (x, point) in row.iter().enumerate() {
@@ -54,88 +56,141 @@ fn find_low_points(coords: &Vec<Vec<u8>>) -> Vec<(usize, usize)> {
 }
 
 #[inline]
-fn up_has_higher_neighbor(coords: &Vec<Vec<u8>>, p: (usize, usize)) -> bool {
-    (p.1 != 0 && coords[p.0][p.1] < coords[p.0][p.1-1]) ||
-    (p.1 + 1 != coords[0].len() && coords[p.0][p.1] < coords[p.0][p.1+1]) ||
-    (p.0 + 1 != coords.len() && coords[p.0][p.1] < coords[p.0+1][p.1])
+fn get(coords: &[Vec<u8>], p: Point) -> u8 {
+    coords[p.0][p.1]
 }
 
 #[inline]
-fn down_has_higher_neighbor(coords: &Vec<Vec<u8>>, p: (usize, usize)) -> bool {
-    (p.1 != 0 && coords[p.0][p.1] < coords[p.0][p.1-1]) ||
-    (p.1 + 1 != coords[0].len() && coords[p.0][p.1] < coords[p.0][p.1+1]) ||
-    (p.0 != 0 && coords[p.0][p.1] < coords[p.0-1][p.1])
+fn get_arr(coords: &[[usize; 100]], p: Point) -> usize {
+    coords[p.0][p.1]
 }
 
-#[inline]
-fn left_has_higher_neighbor(coords: &Vec<Vec<u8>>, p: (usize, usize)) -> bool {
-    (p.1 + 1 != coords[0].len() && coords[p.0][p.1] < coords[p.0][p.1+1]) ||
-    (p.0 != 0 && coords[p.0][p.1] < coords[p.0-1][p.1]) ||
-    (p.0 + 1 != coords.len() && coords[p.0][p.1] < coords[p.0+1][p.1])
+fn u(p: Point) -> Point {
+    assert!(p.0 != 0);
+    (p.0 - 1, p.1)
+}
+fn d(p: Point) -> Point {
+    (p.0 + 1, p.1)
+}
+fn l(p: Point) -> Point {
+    assert!(p.1 != 0);
+    (p.0, p.1 - 1)
+}
+fn r(p: Point) -> Point {
+    (p.0, p.1 + 1)
 }
 
-#[inline]
-fn right_has_higher_neighbor(coords: &Vec<Vec<u8>>, p: (usize, usize)) -> bool {
-    (p.1 != 0 && coords[p.0][p.1] < coords[p.0][p.1-1]) ||
-    (p.0 != 0 && coords[p.0][p.1] < coords[p.0-1][p.1]) ||
-    (p.0 + 1 != coords.len() && coords[p.0][p.1] < coords[p.0+1][p.1])
+fn get_neighbors(p: Point, y_max: usize, x_max: usize) -> Vec<Point> {
+    let mut v = Vec::new();
+    if p.0 != 0 {
+        v.push(u(p));
+    }
+    if p.0 + 1 != y_max {
+        v.push(d(p));
+    }
+    if p.1 != 0 {
+        v.push(l(p));
+    }
+    if p.1 + 1 != x_max {
+        v.push(r(p));
+    }
+    v
 }
 
-fn find_basin(coords: &Vec<Vec<u8>>, point: (usize, usize), checked: &mut Vec<BitVec>) -> usize {
-    let mut size = 1usize;
-    let mut coord_queue = Vec::new();
-    coord_queue.push(point);
+fn find_basins(coords: &[Vec<u8>]) -> Vec<usize> {
+    let mut basins: Vec<usize> = vec![0];
 
-    checked[point.0].set(point.1, true);
+    let mut basin_coords: [[usize; 100]; 100] = [[0; 100]; 100];
 
-    println!("Finding basin for {:?} height {}", point, coords[point.0][point.1]);
+    let mut points_to_check: [Vec<Point>; 9] = [Vec::new(), Vec::with_capacity(20), Vec::with_capacity(20), Vec::with_capacity(20), Vec::with_capacity(20), Vec::with_capacity(20), Vec::with_capacity(20), Vec::with_capacity(20), Vec::with_capacity(20)];
 
-    while let Some(p) = coord_queue.pop() {
-        println!("  Checking {:?} {}", p, checked[p.0][p.1]);
-
-        if p.0 != 0 && !checked[p.0-1][p.1] && up_has_higher_neighbor(coords, (p.0 - 1, p.1)) {
-            size += 1;
-            coord_queue.push((p.0 - 1, p.1));
-            checked[p.0-1].set(p.1, true);
-            println!("    Adding to basin u: {:?} height {:?}", (p.0 - 1, p.1), coords[p.0-1][p.1]);
-        }
-
-        let new_p = (p.0 + 1, p.1);
-        if new_p.0 != coords.len() && !checked[new_p.0][new_p.1] && down_has_higher_neighbor(coords, new_p) {
-            size += 1;
-            coord_queue.push(new_p);
-            checked[p.0+1].set(p.1, true);
-            println!("    Adding to basin d: {:?} height {:?}", new_p, coords[p.0+1][p.1]);
-        }
-
-        if p.1 != 0 && !checked[p.0][p.1-1] && left_has_higher_neighbor(coords, (p.0, p.1-1)) {
-            size += 1;
-            coord_queue.push((p.0, p.1-1));
-            checked[p.0].set(p.1-1, true);
-            println!("    Adding to basin l: {:?} height {:?}", (p.0, p.1-1), coords[p.0][p.1-1]);
-        }
-
-        let new_p = (p.0, p.1+1);
-        if new_p.1 != coords[0].len() && !checked[new_p.0][new_p.1] && right_has_higher_neighbor(coords, new_p) {
-            size += 1;
-            coord_queue.push(new_p);
-            checked[p.0].set(p.1+1, true);
-            println!("    Adding to basin r: {:?} height {:?}", new_p, coords[p.0][p.1+1]);
+    for (y, row) in coords.iter().enumerate() {
+        for (x, p) in row.iter().enumerate() {
+            if *p == 0 {
+                basins.push(1);
+                basin_coords[y][x] = basins.len();
+            }
+            else if *p != 9 {
+                points_to_check[*p as usize].push((y, x));
+            }
         }
     }
-    size
+
+    for list in points_to_check.iter().skip(1) {
+        for p in list.iter() {
+            let flows_to = get_neighbors(*p, coords.len(), coords[0].len()).iter().filter(|&other| get(coords, *other) < get(coords, *p)).map(|&other| get_arr(&basin_coords, other)).collect::<Vec<usize>>();
+
+            if flows_to.is_empty() {
+                basins.push(1);
+                // println!("found new basin for {}: {}", i, basins.len());
+                basin_coords[p.0][p.1] = basins.len();
+            }
+
+            else if flows_to.len() == 1 || flows_to.iter().min() == flows_to.iter().max() {
+                // println!("found new basin for {}: {}", i, basins.len());
+                basin_coords[p.0][p.1] = flows_to[0];
+                basins[flows_to[0] - 1] += 1;
+            }
+            // else it's in between two basins, so it's in none of them
+            else {
+                assert!(get(coords, *p) == 9);
+            }
+        }
+    }
+
+    basins.sort_unstable();
+    basins
 }
 
-fn solve_second(coords: &Vec<Vec<u8>>) -> usize {
-    let low_points = find_low_points(coords);
-    println!("{:?}", low_points);
-    let mut checked = vec![BitVec::from_elem(coords[0].len(), false); coords.len()];
+fn get_unchecked_neighbors(p: Point, y_max: usize, x_max: usize, checked: &[BitVec]) -> Vec<Point> {
+    let mut v = Vec::new();
+    if p.0 != 0 && !checked[p.0 - 1][p.1] {
+        v.push(u(p));
+    }
+    if p.0 + 1 != y_max && !checked[p.0 + 1][p.1] {
+        v.push(d(p));
+    }
+    if p.1 != 0 && !checked[p.0][p.1 - 1] {
+        v.push(l(p));
+    }
+    if p.1 + 1 != x_max && !checked[p.0][p.1 + 1] {
+        v.push(r(p));
+    }
+    v
+}
 
-    let mut sizes = low_points.iter().map(|lp| find_basin(&coords, *lp, &mut checked)).collect::<Vec<usize>>();
-    println!("{:?}", sizes);
-    sizes.sort_unstable();
+fn find_basin(coords: &[Vec<u8>], start: Point, checked: &mut [BitVec]) -> usize {
+    let mut basin_size = 1;
+    checked[start.0].set(start.1, true);
 
-    sizes.iter().rev().take(3).product()
+    let mut points_to_check: VecDeque<Point> = VecDeque::with_capacity(150);
+    points_to_check.push_back(start);
+
+    while let Some(p) = points_to_check.pop_front() {
+        checked[p.0].set(p.1, true);
+        if get(coords, p) != 9 {
+            basin_size += 1;
+            points_to_check.extend(get_unchecked_neighbors(p, coords.len(), coords[0].len(), &checked).iter());
+        }
+    }
+    basin_size
+}
+
+fn find_basins_fast(coords: &[Vec<u8>], low_points: &[Point]) -> Vec<usize> {
+    let mut checked = Vec::new();
+    for _ in 0..100 {
+        checked.push(BitVec::from_elem(low_points.len(), false))
+    }
+    low_points.iter().map(|&lp| find_basin(coords, lp, &mut checked)).collect()
+}
+
+fn solve_second(coords: &[Vec<u8>]) -> usize {
+    // let low_points = find_low_points(coords);
+    // let basins = find_basins_fast(coords, &low_points);
+    let basins = find_basins(coords);
+
+    // println!("{:?}", basins);
+    basins.iter().rev().take(3).product()
 }
 
 fn parse(lines: Vec<String>) -> Vec<Vec<u8>> {
@@ -152,23 +207,58 @@ mod tests {
 
     #[bench]
     fn bench(b: &mut Bencher) -> () {
-        let lines = parse(utils::get_input(8, true));
+        let lines = parse(utils::get_input(9, true));
 
         // start profiling
         // let guard = pprof::ProfilerGuard::new(100).unwrap();
+        // let guard = pprof::ProfilerGuardBuilder::default().frequency(1000).blocklist(&["libc", "libgcc", "pthread"]).build().unwrap();
+        println!("abt to run");
 
         // run benchmark
         b.iter(|| solve_second(&lines));
 
         // build flamegraph
+        println!("done running");
         // if let Ok(report) = guard.report().build() {
+        //     println!("built report");
         //     use std::fs::File;
         //     let file = File::create("flamegraph.svg").unwrap();
+        //     println!("file created");
         //     report.flamegraph(file).unwrap();
+        //     println!("flamegraph created");
         // };
 
         // Put this into Cargo.toml if you want a useful flamegraph
         // [profile.release]
         // debug = true
     }
+
+    // #[test]
+    // fn test() -> () {
+    //     let lines = parse(utils::get_input(9, true));
+
+    //     // start profiling
+    //     // let guard = pprof::ProfilerGuard::new(100).unwrap();
+    //     let guard = pprof::ProfilerGuardBuilder::default().frequency(1000).blocklist(&["libc", "libgcc", "pthread"]).build().unwrap();
+    //     println!("abt to run");
+
+    //     // run benchmark
+    //     solve_second(&lines);
+    //     // b.iter(|| solve_second(&lines));
+
+    //     // build flamegraph
+    //     println!("done running");
+    //     if let Ok(report) = guard.report().build() {
+    //         println!("built report");
+    //         use std::fs::File;
+    //         let file = File::create("flamegraph.svg").unwrap();
+    //         println!("file created");
+    //         report.flamegraph(file).unwrap();
+    //         println!("flamegraph created");
+    //     };
+
+    //     // Put this into Cargo.toml if you want a useful flamegraph
+    //     // [profile.release]
+    //     // debug = true
+    // }
 }
