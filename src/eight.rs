@@ -21,7 +21,12 @@ pub fn main() {
 
     let lines = parse(utils::get_input(8, true));
     {
-        let solved = solve_first(lines.iter().map(|pair| (pair.0.clone().into_vec(), pair.1.clone().into_vec())).collect());
+        let solved = solve_first(
+            lines
+                .iter()
+                .map(|pair| (pair.0.clone().into_vec(), pair.1.clone().into_vec()))
+                .collect(),
+        );
         println!("{:?}", solved)
     }
 
@@ -45,9 +50,7 @@ fn solve_first(lines: Vec<(Vec<String>, Vec<String>)>) -> usize {
             .collect::<Vec<usize>>()
     });
 
-    output_sizes
-        .filter(|size| is_unique_digit(*size))
-        .count()
+    output_sizes.filter(|size| is_unique_digit(*size)).count()
 }
 
 fn parse_displays10(display: &[String]) -> Displays10 {
@@ -58,7 +61,7 @@ fn parse_displays10(display: &[String]) -> Displays10 {
                 .bytes()
                 .map(|ch| (1u8 << (ch & 0b111)))
                 .fold(0, |l, r| l | r)
-                // .fold(0, |val, ch| val | (1u8 << ((ch as u8) & 0b111)))
+            // .fold(0, |val, ch| val | (1u8 << ((ch as u8) & 0b111)))
         })
         .collect()
 }
@@ -71,7 +74,7 @@ fn parse_displays4(display: &[String]) -> Displays4 {
                 .bytes()
                 .map(|ch| (1u8 << (ch & 0b111)))
                 .fold(0, |l, r| l | r)
-                // .fold(0, |val, ch| val | (1u8 << ((ch as u8) & 0b111)))
+            // .fold(0, |val, ch| val | (1u8 << ((ch as u8) & 0b111)))
         })
         .collect()
 }
@@ -91,7 +94,7 @@ fn set_initial_maps(
     conversions: &mut [u8; 256],
     segments: &mut [u8; 7],
     bit_counts: &[u8; 256],
-    one: &mut Display
+    one: &mut Display,
 ) {
     assert!(displays.len() >= 9);
     assert!(display_indices.len() == 2);
@@ -140,13 +143,29 @@ fn set_initial_maps(
     }
 }
 
-fn solve_3(displays: &mut SeenDisplays, conversions: &mut [Display; 256], seg2: Display, seg5: Display) {
-    let final_3 = *displays[3].iter().find(|&disp| *disp != seg2 && *disp != seg5).unwrap();
+fn solve_3(
+    displays: &mut SeenDisplays,
+    conversions: &mut [Display; 256],
+    seg2: Display,
+    seg5: Display,
+) {
+    let final_3 = *displays[3]
+        .iter()
+        .find(|&disp| *disp != seg2 && *disp != seg5)
+        .unwrap();
     conversions[final_3 as usize] = 3;
 }
 
-fn solve_6(displays: &mut SeenDisplays, conversions: &mut [u8; 256], segments: &mut [u8; 7], segments_1: Display) -> Display {
-    let final_6 = *displays[6].iter().find(|&disp| (*disp & segments_1) != segments_1).unwrap();
+fn solve_6(
+    displays: &mut SeenDisplays,
+    conversions: &mut [u8; 256],
+    segments: &mut [u8; 7],
+    segments_1: Display,
+) -> Display {
+    let final_6 = *displays[6]
+        .iter()
+        .find(|&disp| (*disp & segments_1) != segments_1)
+        .unwrap();
     conversions[final_6 as usize] = 6;
 
     segments[5] = segments_1 & final_6;
@@ -155,25 +174,50 @@ fn solve_6(displays: &mut SeenDisplays, conversions: &mut [u8; 256], segments: &
     final_6
 }
 
-fn solve_2(displays: &mut SeenDisplays, conversions: &mut [u8; 256], segments: &mut [u8; 7]) -> Display {
-    let final_2 = *displays[2].iter().find(|&disp| (*disp & segments[5]) == 0).unwrap();
+fn solve_2(
+    displays: &mut SeenDisplays,
+    conversions: &mut [u8; 256],
+    segments: &mut [u8; 7],
+) -> Display {
+    let final_2 = *displays[2]
+        .iter()
+        .find(|&disp| (*disp & segments[5]) == 0)
+        .unwrap();
     conversions[final_2 as usize] = 2;
     final_2
 }
 
-fn solve_5(displays: &mut SeenDisplays, conversions: &mut [u8; 256], segments: &mut [u8; 7]) -> Display {
-    let final_5 = *displays[5].iter().find(|&disp| (*disp & segments[2]) == 0).unwrap();
+fn solve_5(
+    displays: &mut SeenDisplays,
+    conversions: &mut [u8; 256],
+    segments: &mut [u8; 7],
+) -> Display {
+    let final_5 = *displays[5]
+        .iter()
+        .find(|&disp| (*disp & segments[2]) == 0)
+        .unwrap();
     conversions[final_5 as usize] = 5;
     final_5
 }
 
-fn solve_09(displays: &mut SeenDisplays, conversions: &mut [u8; 256], segments: &mut [u8; 7], segments_5: Display, segments_6: Display) {
-    let final_0 = *displays[0].iter().find(|&disp| *disp != segments_6 && ((*disp ^ segments_5) ^ segments[2]) != 0).unwrap();
+fn solve_09(
+    displays: &mut SeenDisplays,
+    conversions: &mut [u8; 256],
+    segments: &mut [u8; 7],
+    segments_5: Display,
+    segments_6: Display,
+) {
+    let final_0 = *displays[0]
+        .iter()
+        .find(|&disp| *disp != segments_6 && ((*disp ^ segments_5) ^ segments[2]) != 0)
+        .unwrap();
     conversions[final_0 as usize] = 0;
-    
-    let final_9 = *displays[9].iter().find(|&disp| *disp != final_0 && *disp != segments_6).unwrap();
+
+    let final_9 = *displays[9]
+        .iter()
+        .find(|&disp| *disp != final_0 && *disp != segments_6)
+        .unwrap();
     conversions[final_9 as usize] = 9;
-    
 }
 
 fn decode_display(seen: &[Display]) -> [u8; 256] {
@@ -193,7 +237,7 @@ fn decode_display(seen: &[Display]) -> [u8; 256] {
         get_three_vec(),
         SmallVec::new(),
         SmallVec::new(),
-        get_three_vec()
+        get_three_vec(),
     ];
     let mut display_indices = [0usize; 2];
 
@@ -207,7 +251,15 @@ fn decode_display(seen: &[Display]) -> [u8; 256] {
     let mut one: Display = 0;
 
     for display in seen {
-        set_initial_maps(*display, &mut displays, &mut display_indices, &mut conversions, &mut segments, &bit_counts, &mut one)
+        set_initial_maps(
+            *display,
+            &mut displays,
+            &mut display_indices,
+            &mut conversions,
+            &mut segments,
+            &bit_counts,
+            &mut one,
+        )
     }
 
     let six = solve_6(&mut displays, &mut conversions, &mut segments, one);

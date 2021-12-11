@@ -4,10 +4,11 @@
 use std::env;
 
 mod eight;
+mod eleven;
 mod five;
+mod nine;
 mod seven;
 mod six;
-mod nine;
 mod ten;
 
 fn main() {
@@ -20,6 +21,7 @@ fn main() {
             Ok(8) => eight::main(),
             Ok(9) => nine::main(),
             Ok(10) => ten::main(),
+            Ok(11) => eleven::main(),
             _ => {
                 println!("Enter the day as an argument")
             }

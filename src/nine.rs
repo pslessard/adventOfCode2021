@@ -8,7 +8,7 @@ extern crate test;
 //     height: u8,
 
 // }
-// type CaveMap = 
+// type CaveMap =
 type Point = (usize, usize);
 type Row = Vec<u8>;
 type Grid = Vec<Row>;
@@ -29,10 +29,11 @@ fn solve_first(coords: &Grid) -> u64 {
     let mut total_risk = 0u64;
     for (y, row) in coords.iter().enumerate() {
         for (x, point) in row.iter().enumerate() {
-            if (x != 0 && point >= &row[x-1]) ||
-               (x + 1 != row.len() && point >= &row[x+1]) ||
-               (y != 0 && point >= &coords[y-1][x]) ||
-               (y + 1 != coords.len() && point >= &coords[y+1][x]) {
+            if (x != 0 && point >= &row[x - 1])
+                || (x + 1 != row.len() && point >= &row[x + 1])
+                || (y != 0 && point >= &coords[y - 1][x])
+                || (y + 1 != coords.len() && point >= &coords[y + 1][x])
+            {
                 continue;
             }
             total_risk += (point + 1) as u64
@@ -41,14 +42,16 @@ fn solve_first(coords: &Grid) -> u64 {
     total_risk
 }
 
+#[allow(dead_code)]
 fn find_low_points(coords: &Grid) -> Vec<Point> {
     let mut low_points: Vec<Point> = Vec::new();
     for (y, row) in coords.iter().enumerate() {
         for (x, point) in row.iter().enumerate() {
-            if (x != 0 && point >= &row[x-1]) ||
-               (x + 1 != row.len() && point >= &row[x+1]) ||
-               (y != 0 && point >= &coords[y-1][x]) ||
-               (y + 1 != coords.len() && point >= &coords[y+1][x]) {
+            if (x != 0 && point >= &row[x - 1])
+                || (x + 1 != row.len() && point >= &row[x + 1])
+                || (y != 0 && point >= &coords[y - 1][x])
+                || (y + 1 != coords.len() && point >= &coords[y + 1][x])
+            {
                 continue;
             }
             low_points.push((y, x))
@@ -95,7 +98,13 @@ fn r(p: Point) -> Point {
     (p.0, p.1 + 1)
 }
 
-fn get_unchecked_neighbors(p: Point, y_max: usize, x_max: usize, coords: &Grid, checked: &mut [BitVec]) -> Vec<Point> {
+fn get_unchecked_neighbors(
+    p: Point,
+    y_max: usize,
+    x_max: usize,
+    coords: &Grid,
+    checked: &mut [BitVec],
+) -> Vec<Point> {
     let mut v = Vec::new();
     if p.0 != 0 && !checked[p.0 - 1][p.1] && get(coords, u(p)) != 9 {
         let n = u(p);
@@ -128,9 +137,22 @@ fn check(coords: &Grid, p: Point, checked: &mut [BitVec]) -> usize {
         0 => 1,
         1 => check(coords, neighbors[0], checked) + 1,
         2 => check(coords, neighbors[0], checked) + check(coords, neighbors[1], checked) + 1,
-        3 => check(coords, neighbors[0], checked) + check(coords, neighbors[1], checked) + check(coords, neighbors[2], checked) + 1,
-        4 => check(coords, neighbors[0], checked) + check(coords, neighbors[1], checked) + check(coords, neighbors[2], checked) + check(coords, neighbors[3], checked) + 1,
-        _ => { panic!("invalid length") }
+        3 => {
+            check(coords, neighbors[0], checked)
+                + check(coords, neighbors[1], checked)
+                + check(coords, neighbors[2], checked)
+                + 1
+        }
+        4 => {
+            check(coords, neighbors[0], checked)
+                + check(coords, neighbors[1], checked)
+                + check(coords, neighbors[2], checked)
+                + check(coords, neighbors[3], checked)
+                + 1
+        }
+        _ => {
+            panic!("invalid length")
+        }
     }
 }
 
@@ -140,24 +162,34 @@ fn check_low_point(coords: &Grid, p: Point, checked: &mut [BitVec]) -> usize {
     check(coords, p, checked)
 }
 
+#[allow(dead_code)]
 fn check_low_point_fast(coords: &Grid, p: Point, checked: &mut [BitVec]) -> usize {
     // println!("Basin: {:?}: {}", p, get(coords, p));
     checked[p.0].set(p.1, true);
     check(coords, p, checked)
 }
 
+#[allow(dead_code)]
 fn find_basins(coords: &Grid, low_points: &[Point]) -> Vec<usize> {
     let mut checked = vec![BitVec::from_elem(100, false); 100];
-    
-    low_points.iter().map(|&lp| check_low_point(coords, lp, &mut checked)).collect()
+
+    low_points
+        .iter()
+        .map(|&lp| check_low_point(coords, lp, &mut checked))
+        .collect()
 }
 
+#[allow(dead_code)]
 fn find_basins_fast(coords: &Grid, low_points: &[Point]) -> Vec<usize> {
     let mut checked = vec![BitVec::from_elem(100, false); 100];
-    
-    low_points.iter().map(|&lp| check_low_point_fast(coords, lp, &mut checked)).collect()
+
+    low_points
+        .iter()
+        .map(|&lp| check_low_point_fast(coords, lp, &mut checked))
+        .collect()
 }
 
+#[allow(dead_code)]
 fn solve_second_test(coords: &Grid) -> usize {
     let low_points = find_low_points(coords);
     let mut basins = find_basins(coords, &low_points);
@@ -167,18 +199,17 @@ fn solve_second_test(coords: &Grid) -> usize {
     basins.iter().rev().take(3).product()
 }
 
-
-
 fn solve_second(coords: &Grid) -> usize {
     let mut checked = vec![BitVec::from_elem(100, false); 100];
     let mut heap = BinaryHeap::new();
 
     for (y, row) in coords.iter().enumerate() {
         for (x, point) in row.iter().enumerate() {
-            if (x != 0 && point >= &row[x-1]) ||
-               (x + 1 != row.len() && point >= &row[x+1]) ||
-               (y != 0 && point >= &coords[y-1][x]) ||
-               (y + 1 != coords.len() && point >= &coords[y+1][x]) {
+            if (x != 0 && point >= &row[x - 1])
+                || (x + 1 != row.len() && point >= &row[x + 1])
+                || (y != 0 && point >= &coords[y - 1][x])
+                || (y + 1 != coords.len() && point >= &coords[y + 1][x])
+            {
                 continue;
             }
             heap.push(check_low_point(coords, (y, x), &mut checked));
@@ -192,7 +223,11 @@ fn solve_second(coords: &Grid) -> usize {
 fn parse(lines: Vec<String>) -> Grid {
     lines
         .iter()
-        .map(|line| line.chars().map(|ch| ch.to_digit(10).unwrap() as u8).collect())
+        .map(|line| {
+            line.chars()
+                .map(|ch| ch.to_digit(10).unwrap() as u8)
+                .collect()
+        })
         .collect()
 }
 

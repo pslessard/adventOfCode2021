@@ -29,10 +29,7 @@ fn get_cost(coord: &i16, median: i16) -> i64 {
 }
 
 fn get_total_cost(coords: &[i16], value: i16) -> i64 {
-    coords
-        .iter()
-        .map(|coord| get_cost(coord, value))
-        .sum()
+    coords.iter().map(|coord| get_cost(coord, value)).sum()
 }
 
 fn get_last(coords: &[i16]) -> i16 {

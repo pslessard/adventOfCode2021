@@ -1,4 +1,3 @@
-
 extern crate pprof;
 extern crate test;
 
@@ -20,42 +19,34 @@ fn get_corruption_score(line: &Line) -> usize {
     let mut stack = Vec::with_capacity(60);
     for ch in line {
         match ch {
-            '(' => {
-                stack.push(ch)
-            }
-            '[' => {
-                stack.push(ch)
-            }
-            '{' => {
-                stack.push(ch)
-            }
-            '<' => {
-                stack.push(ch)
-            }
+            '(' => stack.push(ch),
+            '[' => stack.push(ch),
+            '{' => stack.push(ch),
+            '<' => stack.push(ch),
             ')' => {
                 let open = stack.pop().unwrap();
                 if *open != '(' {
-                    return 3
+                    return 3;
                 }
             }
             ']' => {
                 let open = stack.pop().unwrap();
                 if *open != '[' {
-                    return 57
+                    return 57;
                 }
             }
             '}' => {
                 let open = stack.pop().unwrap();
                 if *open != '{' {
-                    return 1197
+                    return 1197;
                 }
             }
             '>' => {
                 let open = stack.pop().unwrap();
                 if *open != '<' {
-                    return 25137
+                    return 25137;
                 }
-            },
+            }
             _ => {
                 panic!("invalid character")
             }
@@ -73,48 +64,40 @@ fn complete_line(line: &Line) -> Option<u64> {
 
     for ch in line {
         match ch {
-            '(' => {
-                stack.push(*ch)
-            }
-            '[' => {
-                stack.push(*ch)
-            }
-            '{' => {
-                stack.push(*ch)
-            }
-            '<' => {
-                stack.push(*ch)
-            }
+            '(' => stack.push(*ch),
+            '[' => stack.push(*ch),
+            '{' => stack.push(*ch),
+            '<' => stack.push(*ch),
             ')' => {
                 let open = stack.pop().unwrap();
                 if open != '(' {
-                    return None
+                    return None;
                 }
             }
             ']' => {
                 let open = stack.pop().unwrap();
                 if open != '[' {
-                    return None
+                    return None;
                 }
             }
             '}' => {
                 let open = stack.pop().unwrap();
                 if open != '{' {
-                    return None
+                    return None;
                 }
             }
             '>' => {
                 let open = stack.pop().unwrap();
                 if open != '<' {
-                    return None
+                    return None;
                 }
-            },
+            }
             _ => {
                 panic!("invalid character")
             }
         }
     }
-    
+
     if !stack.is_empty() {
         // let mut completion = Vec::with_capacity(stack.len());
         let mut score = 0u64;
@@ -134,8 +117,7 @@ fn complete_line(line: &Line) -> Option<u64> {
 
         // Some(completion)
         Some(score)
-    }
-    else {
+    } else {
         None
     }
 }
@@ -143,17 +125,17 @@ fn complete_line(line: &Line) -> Option<u64> {
 // fn calculate_completion_score(completions)
 
 fn solve_second(lines: &[Line]) -> u64 {
-    let mut val: Vec<u64> = lines.iter().filter_map(|line| complete_line(line)).collect();
+    let mut val: Vec<u64> = lines
+        .iter()
+        .filter_map(|line| complete_line(line))
+        .collect();
     val.sort_unstable();
     println!("{:?}", val);
     val[val.len() / 2]
 }
 
 fn parse(lines: Vec<String>) -> Vec<Line> {
-    lines
-        .iter()
-        .map(|line| line.chars().collect())
-        .collect()
+    lines.iter().map(|line| line.chars().collect()).collect()
 }
 
 #[cfg(test)]
