@@ -1,5 +1,3 @@
-use bit_vec::BitVec;
-use std::collections::VecDeque;
 
 extern crate pprof;
 extern crate test;

@@ -1,5 +1,5 @@
 use bit_vec::BitVec;
-use std::collections::VecDeque;
+use std::collections::BinaryHeap;
 
 extern crate pprof;
 extern crate test;
@@ -10,9 +10,11 @@ extern crate test;
 // }
 // type CaveMap = 
 type Point = (usize, usize);
+type Row = Vec<u8>;
+type Grid = Vec<Row>;
 
 pub fn main() {
-    let lines = parse(utils::get_input(9, false));
+    let lines = parse(utils::get_input(9, true));
     {
         let solved = solve_first(&lines);
         println!("{:?}", solved)
@@ -23,7 +25,7 @@ pub fn main() {
     }
 }
 
-fn solve_first(coords: &[Vec<u8>]) -> u64 {
+fn solve_first(coords: &Grid) -> u64 {
     let mut total_risk = 0u64;
     for (y, row) in coords.iter().enumerate() {
         for (x, point) in row.iter().enumerate() {
@@ -39,8 +41,8 @@ fn solve_first(coords: &[Vec<u8>]) -> u64 {
     total_risk
 }
 
-fn find_low_points(coords: &[Vec<u8>]) -> Vec<Point> {
-    let mut low_points = Vec::new();
+fn find_low_points(coords: &Grid) -> Vec<Point> {
+    let mut low_points: Vec<Point> = Vec::new();
     for (y, row) in coords.iter().enumerate() {
         for (x, point) in row.iter().enumerate() {
             if (x != 0 && point >= &row[x-1]) ||
@@ -55,145 +57,139 @@ fn find_low_points(coords: &[Vec<u8>]) -> Vec<Point> {
     low_points
 }
 
+// fn is_low_point(x: usize, y: usize, val: u8, row: &[u8], coords: &[Vec<u8>]) -> Option<Point> {
+//     match (x != 0 && val >= row[(x)-1]) ||
+//     (x + 1 != row.len() && val >= row[x+1]) ||
+//     (y != 0 && val >= coords[y-1][x]) ||
+//     (y + 1 != coords.len() && val >= coords[y+1][x]) {
+//         true => Some((y, x)),
+//         false => None
+//     }
+// }
+
+// fn find_low_points_fast(coords: &[Vec<u8>]) -> Vec<Point> {
+//     coords.iter().enumerate().flat_map(move |(y, row)| row.iter().enumerate().filter_map(move |(x, p)| is_low_point(x, y, *p, row, coords))).collect()
+// }
+
 #[inline]
-fn get(coords: &[Vec<u8>], p: Point) -> u8 {
+fn get(coords: &Grid, p: Point) -> u8 {
     coords[p.0][p.1]
 }
 
 #[inline]
-fn get_arr(coords: &[[usize; 100]], p: Point) -> usize {
-    coords[p.0][p.1]
-}
-
 fn u(p: Point) -> Point {
     assert!(p.0 != 0);
     (p.0 - 1, p.1)
 }
+#[inline]
 fn d(p: Point) -> Point {
     (p.0 + 1, p.1)
 }
+#[inline]
 fn l(p: Point) -> Point {
     assert!(p.1 != 0);
     (p.0, p.1 - 1)
 }
+#[inline]
 fn r(p: Point) -> Point {
     (p.0, p.1 + 1)
 }
 
-fn get_neighbors(p: Point, y_max: usize, x_max: usize) -> Vec<Point> {
+fn get_unchecked_neighbors(p: Point, y_max: usize, x_max: usize, coords: &Grid, checked: &mut [BitVec]) -> Vec<Point> {
     let mut v = Vec::new();
-    if p.0 != 0 {
-        v.push(u(p));
+    if p.0 != 0 && !checked[p.0 - 1][p.1] && get(coords, u(p)) != 9 {
+        let n = u(p);
+        checked[n.0].set(n.1, true);
+        v.push(n);
     }
-    if p.0 + 1 != y_max {
-        v.push(d(p));
+    if p.0 + 1 != y_max && !checked[p.0 + 1][p.1] && get(coords, d(p)) != 9 {
+        let n = d(p);
+        checked[n.0].set(n.1, true);
+        v.push(n);
     }
-    if p.1 != 0 {
-        v.push(l(p));
+    if p.1 != 0 && !checked[p.0][p.1 - 1] && get(coords, l(p)) != 9 {
+        let n = l(p);
+        checked[n.0].set(n.1, true);
+        v.push(n);
     }
-    if p.1 + 1 != x_max {
-        v.push(r(p));
+    if p.1 + 1 != x_max && !checked[p.0][p.1 + 1] && get(coords, r(p)) != 9 {
+        let n = r(p);
+        checked[n.0].set(n.1, true);
+        v.push(n);
     }
     v
 }
 
-fn find_basins(coords: &[Vec<u8>]) -> Vec<usize> {
-    let mut basins: Vec<usize> = vec![0];
+fn check(coords: &Grid, p: Point, checked: &mut [BitVec]) -> usize {
+    // println!("  Adding to basin: {:?} - {}", p, get(coords, p));
 
-    let mut basin_coords: [[usize; 100]; 100] = [[0; 100]; 100];
-
-    let mut points_to_check: [Vec<Point>; 9] = [Vec::new(), Vec::with_capacity(20), Vec::with_capacity(20), Vec::with_capacity(20), Vec::with_capacity(20), Vec::with_capacity(20), Vec::with_capacity(20), Vec::with_capacity(20), Vec::with_capacity(20)];
-
-    for (y, row) in coords.iter().enumerate() {
-        for (x, p) in row.iter().enumerate() {
-            if *p == 0 {
-                basins.push(1);
-                basin_coords[y][x] = basins.len();
-            }
-            else if *p != 9 {
-                points_to_check[*p as usize].push((y, x));
-            }
-        }
+    let neighbors = get_unchecked_neighbors(p, coords.len(), coords[0].len(), coords, checked);
+    match neighbors.len() {
+        0 => 1,
+        1 => check(coords, neighbors[0], checked) + 1,
+        2 => check(coords, neighbors[0], checked) + check(coords, neighbors[1], checked) + 1,
+        3 => check(coords, neighbors[0], checked) + check(coords, neighbors[1], checked) + check(coords, neighbors[2], checked) + 1,
+        4 => check(coords, neighbors[0], checked) + check(coords, neighbors[1], checked) + check(coords, neighbors[2], checked) + check(coords, neighbors[3], checked) + 1,
+        _ => { panic!("invalid length") }
     }
+}
 
-    for list in points_to_check.iter().skip(1) {
-        for p in list.iter() {
-            let flows_to = get_neighbors(*p, coords.len(), coords[0].len()).iter().filter(|&other| get(coords, *other) < get(coords, *p)).map(|&other| get_arr(&basin_coords, other)).collect::<Vec<usize>>();
+fn check_low_point(coords: &Grid, p: Point, checked: &mut [BitVec]) -> usize {
+    // println!("Basin: {:?}: {}", p, get(coords, p));
+    checked[p.0].set(p.1, true);
+    check(coords, p, checked)
+}
 
-            if flows_to.is_empty() {
-                basins.push(1);
-                // println!("found new basin for {}: {}", i, basins.len());
-                basin_coords[p.0][p.1] = basins.len();
-            }
+fn check_low_point_fast(coords: &Grid, p: Point, checked: &mut [BitVec]) -> usize {
+    // println!("Basin: {:?}: {}", p, get(coords, p));
+    checked[p.0].set(p.1, true);
+    check(coords, p, checked)
+}
 
-            else if flows_to.len() == 1 || flows_to.iter().min() == flows_to.iter().max() {
-                // println!("found new basin for {}: {}", i, basins.len());
-                basin_coords[p.0][p.1] = flows_to[0];
-                basins[flows_to[0] - 1] += 1;
-            }
-            // else it's in between two basins, so it's in none of them
-            else {
-                assert!(get(coords, *p) == 9);
-            }
-        }
-    }
+fn find_basins(coords: &Grid, low_points: &[Point]) -> Vec<usize> {
+    let mut checked = vec![BitVec::from_elem(100, false); 100];
+    
+    low_points.iter().map(|&lp| check_low_point(coords, lp, &mut checked)).collect()
+}
 
+fn find_basins_fast(coords: &Grid, low_points: &[Point]) -> Vec<usize> {
+    let mut checked = vec![BitVec::from_elem(100, false); 100];
+    
+    low_points.iter().map(|&lp| check_low_point_fast(coords, lp, &mut checked)).collect()
+}
+
+fn solve_second_test(coords: &Grid) -> usize {
+    let low_points = find_low_points(coords);
+    let mut basins = find_basins(coords, &low_points);
     basins.sort_unstable();
-    basins
-}
-
-fn get_unchecked_neighbors(p: Point, y_max: usize, x_max: usize, checked: &[BitVec]) -> Vec<Point> {
-    let mut v = Vec::new();
-    if p.0 != 0 && !checked[p.0 - 1][p.1] {
-        v.push(u(p));
-    }
-    if p.0 + 1 != y_max && !checked[p.0 + 1][p.1] {
-        v.push(d(p));
-    }
-    if p.1 != 0 && !checked[p.0][p.1 - 1] {
-        v.push(l(p));
-    }
-    if p.1 + 1 != x_max && !checked[p.0][p.1 + 1] {
-        v.push(r(p));
-    }
-    v
-}
-
-fn find_basin(coords: &[Vec<u8>], start: Point, checked: &mut [BitVec]) -> usize {
-    let mut basin_size = 1;
-    checked[start.0].set(start.1, true);
-
-    let mut points_to_check: VecDeque<Point> = VecDeque::with_capacity(150);
-    points_to_check.push_back(start);
-
-    while let Some(p) = points_to_check.pop_front() {
-        checked[p.0].set(p.1, true);
-        if get(coords, p) != 9 {
-            basin_size += 1;
-            points_to_check.extend(get_unchecked_neighbors(p, coords.len(), coords[0].len(), &checked).iter());
-        }
-    }
-    basin_size
-}
-
-fn find_basins_fast(coords: &[Vec<u8>], low_points: &[Point]) -> Vec<usize> {
-    let mut checked = Vec::new();
-    for _ in 0..100 {
-        checked.push(BitVec::from_elem(low_points.len(), false))
-    }
-    low_points.iter().map(|&lp| find_basin(coords, lp, &mut checked)).collect()
-}
-
-fn solve_second(coords: &[Vec<u8>]) -> usize {
-    // let low_points = find_low_points(coords);
-    // let basins = find_basins_fast(coords, &low_points);
-    let basins = find_basins(coords);
 
     // println!("{:?}", basins);
     basins.iter().rev().take(3).product()
 }
 
-fn parse(lines: Vec<String>) -> Vec<Vec<u8>> {
+
+
+fn solve_second(coords: &Grid) -> usize {
+    let mut checked = vec![BitVec::from_elem(100, false); 100];
+    let mut heap = BinaryHeap::new();
+
+    for (y, row) in coords.iter().enumerate() {
+        for (x, point) in row.iter().enumerate() {
+            if (x != 0 && point >= &row[x-1]) ||
+               (x + 1 != row.len() && point >= &row[x+1]) ||
+               (y != 0 && point >= &coords[y-1][x]) ||
+               (y + 1 != coords.len() && point >= &coords[y+1][x]) {
+                continue;
+            }
+            heap.push(check_low_point(coords, (y, x), &mut checked));
+        }
+    }
+
+    // println!("{:?}", basins);
+    heap.pop().unwrap() * heap.pop().unwrap() * heap.pop().unwrap()
+}
+
+fn parse(lines: Vec<String>) -> Grid {
     lines
         .iter()
         .map(|line| line.chars().map(|ch| ch.to_digit(10).unwrap() as u8).collect())
@@ -205,60 +201,54 @@ mod tests {
     use super::*;
     use test::Bencher;
 
+    // fn clone() {
+    //     let mut checked = Vec::new();
+    //     let bv = BitVec::from_elem(100, false);
+    //     for _ in 0..100 {
+    //         checked.push(bv.clone())
+    //     }
+    //     checked.push(bv);
+    // }
+    // fn normal() {
+    //     let mut checked = Vec::new();
+    //     for _ in 0..100 {
+    //         checked.push(BitVec::from_elem(100, false))
+    //     }
+    // }
+    // fn array() {
+    //     let mut checked = vec![BitVec::from_elem(100, false)];
+    // }
+
+    // #[bench]
+    // fn bench_bit_vecs_other(b: &mut Bencher) -> () {
+    //     b.iter(|| array());
+    // }
     #[bench]
-    fn bench(b: &mut Bencher) -> () {
+    fn bench_partial(b: &mut Bencher) -> () {
+        let lines = parse(utils::get_input(9, true));
+        b.iter(|| solve_second_test(&lines));
+    }
+
+    #[bench]
+    fn bench_fast(b: &mut Bencher) -> () {
         let lines = parse(utils::get_input(9, true));
 
         // start profiling
         // let guard = pprof::ProfilerGuard::new(100).unwrap();
         // let guard = pprof::ProfilerGuardBuilder::default().frequency(1000).blocklist(&["libc", "libgcc", "pthread"]).build().unwrap();
-        println!("abt to run");
 
         // run benchmark
         b.iter(|| solve_second(&lines));
 
         // build flamegraph
-        println!("done running");
         // if let Ok(report) = guard.report().build() {
-        //     println!("built report");
         //     use std::fs::File;
         //     let file = File::create("flamegraph.svg").unwrap();
-        //     println!("file created");
         //     report.flamegraph(file).unwrap();
-        //     println!("flamegraph created");
         // };
 
         // Put this into Cargo.toml if you want a useful flamegraph
         // [profile.release]
         // debug = true
     }
-
-    // #[test]
-    // fn test() -> () {
-    //     let lines = parse(utils::get_input(9, true));
-
-    //     // start profiling
-    //     // let guard = pprof::ProfilerGuard::new(100).unwrap();
-    //     let guard = pprof::ProfilerGuardBuilder::default().frequency(1000).blocklist(&["libc", "libgcc", "pthread"]).build().unwrap();
-    //     println!("abt to run");
-
-    //     // run benchmark
-    //     solve_second(&lines);
-    //     // b.iter(|| solve_second(&lines));
-
-    //     // build flamegraph
-    //     println!("done running");
-    //     if let Ok(report) = guard.report().build() {
-    //         println!("built report");
-    //         use std::fs::File;
-    //         let file = File::create("flamegraph.svg").unwrap();
-    //         println!("file created");
-    //         report.flamegraph(file).unwrap();
-    //         println!("flamegraph created");
-    //     };
-
-    //     // Put this into Cargo.toml if you want a useful flamegraph
-    //     // [profile.release]
-    //     // debug = true
-    // }
 }
