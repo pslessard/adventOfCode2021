@@ -4,7 +4,7 @@ extern crate pprof;
 extern crate test;
 
 type Point = (usize, usize);
-type IterationCount = u16;
+type IterationCount = u8;
 type Unit = (IterationCount, u8);
 type Row = Vec<Unit>;
 type Grid = Vec<Row>;
