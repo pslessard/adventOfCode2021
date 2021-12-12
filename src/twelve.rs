@@ -5,25 +5,12 @@ extern crate pprof;
 extern crate test;
 
 type Id = u8;
-#[derive(Debug, Clone, Copy, PartialEq)]
-enum CaveId {
-    Small(Id),
-    Big(Id)
-}
+type CaveId = (bool, Id);
 type Neighbors = Vec<CaveId>;
 type Graph = Vec<Neighbors>;
 
-impl PartialEq<u8> for CaveId {
-    fn eq(&self, other: &u8) -> bool {
-         match self {
-            CaveId::Small(n) => n == other,
-            CaveId::Big(n) => n == other
-        }
-    }
-}
-
-const START_ID: CaveId = CaveId::Small(0);
-const END_ID: CaveId = CaveId::Small(1);
+const START_ID: CaveId = (true, 0);
+const END_ID: CaveId = (true, 1);
 
 // static mut path: Vec<CaveId> = Vec::new();
 
@@ -41,10 +28,7 @@ pub fn main() {
 
 #[inline]
 fn get_id(cave_id: CaveId) -> Id {
-    match cave_id {
-        CaveId::Small(n) => n,
-        CaveId::Big(n) => n
-    }
+    cave_id.1
 }
 
 #[inline]
@@ -54,7 +38,7 @@ fn get_idx(cave_id: CaveId) -> usize {
 
 #[inline]
 fn is_small(cave_id: CaveId) -> bool {
-    matches!(cave_id, CaveId::Small(_))
+    cave_id.0
 }
 
 fn visit_first(id: CaveId, graph: &Graph, visited_nodes: &mut BitVec, visited_edges: &mut Vec<BitVec>) -> usize {
@@ -97,38 +81,32 @@ fn solve_first(graph: &Graph) -> usize {
 fn check_visit_fast(from: CaveId, to: CaveId, visited_nodes: &mut BitVec, visited_edges: &mut [BitVec], visited_twice: Id) -> (bool, bool)
 {
     let can_visit = !((is_small(to) && visited_nodes[get_idx(to)]) || visited_edges[get_idx(from)][get_idx(to)]);
-    if can_visit {
-        (true, false)
+    if can_visit || to == START_ID {
+        (can_visit, false)
     }
-    else if to != START_ID && is_small(to) && visited_twice == 1 {
-        (true, true)
-    }
-    else if !is_small(to) && from == visited_twice && to != START_ID {
-        (true, false)
+    else if is_small(to) {
+        (visited_twice == 1, true)
     }
     else {
-        (false, false)
+        (from.1 == visited_twice, false)
     }
 }
 
-fn check_visit(from: CaveId, to: CaveId, visited_nodes: &mut BitVec, visited_edges: &mut[BitVec], visited_twice: Option<CaveId>) -> (bool, bool)
+fn check_visit(from: CaveId, to: CaveId, visited_nodes: &mut BitVec, visited_edges: &mut[BitVec], visited_twice: Id) -> (bool, bool)
 {
     let can_visit = !((is_small(to) && visited_nodes[get_idx(to)]) || visited_edges[get_idx(from)][get_idx(to)]);
-    if can_visit {
-        (true, false)
+    if can_visit || to == START_ID {
+        (can_visit, false)
     }
-    else if to != START_ID && is_small(to) && matches!(visited_twice, None) {
-        (true, true)
-    }
-    else if !is_small(to) && matches!(visited_twice, Some(x) if x == from) && to != START_ID {
-        (true, false)
+    else if is_small(to) {
+        (visited_twice == 1, true)
     }
     else {
-        (false, false)
+        (from.1 == visited_twice, false)
     }
 }
 
-fn visit_second(id: CaveId, graph: &Graph, visited_nodes: &mut BitVec, visited_edges: &mut [BitVec], visited_twice: Option<CaveId>) -> usize {
+fn visit_second(id: CaveId, graph: &Graph, visited_nodes: &mut BitVec, visited_edges: &mut [BitVec], visited_twice: Id) -> usize {
     // unsafe { path.push(id); }
 
     let idx = get_idx(id);
@@ -149,7 +127,7 @@ fn visit_second(id: CaveId, graph: &Graph, visited_nodes: &mut BitVec, visited_e
             num_paths += 1;
         }
         else if is_second_small_visit {
-            num_paths += visit_second(node, graph, visited_nodes, visited_edges, Some(node));
+            num_paths += visit_second(node, graph, visited_nodes, visited_edges, get_id(node));
         }
         else {
             visited_edges[idx].set(node_idx, true);
@@ -158,7 +136,7 @@ fn visit_second(id: CaveId, graph: &Graph, visited_nodes: &mut BitVec, visited_e
         }
     }
 
-    if is_small(id) && !matches!(visited_twice, Some(x) if x == id) {
+    if is_small(id) && id.1 != visited_twice {
         visited_nodes.set(idx, false);
     }
 
@@ -197,7 +175,7 @@ fn visit_second_fast(id: CaveId, graph: &Graph, visited_nodes: &mut BitVec, visi
         }
     }
 
-    if is_small(id) && id != visited_twice {
+    if is_small(id) && id.1 != visited_twice {
         visited_nodes.set(idx, false);
     }
 
@@ -210,7 +188,7 @@ fn solve_second(graph: &Graph) -> usize {
     let mut visited_nodes = BitVec::from_elem(graph.len(), false);
     let mut visited_edges = vec![visited_nodes.clone(); graph.len()];
     
-    visit_second(START_ID, graph, &mut visited_nodes, &mut visited_edges, None)
+    visit_second(START_ID, graph, &mut visited_nodes, &mut visited_edges, get_id(END_ID))
 }
 
 fn solve_second_fast(graph: &Graph) -> usize {
@@ -236,10 +214,7 @@ fn parse(lines: Vec<String>) -> Graph {
                 *nameToId.get(name).unwrap()
             }
             else {
-                let newId = match name.chars().nth(0).unwrap().is_uppercase() {
-                    false => CaveId::Small(nameToId.len() as Id),
-                    true => CaveId::Big(nameToId.len() as Id)
-                };
+                let newId = (!name.chars().nth(0).unwrap().is_uppercase(), nameToId.len() as Id);
                 nameToId.insert(String::from(name), newId);
                 graph.push(Vec::new());
 
