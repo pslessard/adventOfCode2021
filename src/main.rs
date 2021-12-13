@@ -1,4 +1,5 @@
 #![feature(test)]
+#![feature(destructuring_assignment)]
 #![allow(non_snake_case)]
 #![allow(unused_imports)]
 use std::env;

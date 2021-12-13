@@ -10,6 +10,7 @@ utils = { path = "util/utils" }
 pprof = { version = "0.6.1", features = ["flamegraph"] }
 smallvec = "1.7.0"
 bit-vec = "0.6.3"
+bit_reverse = "0.1.8"
 
 [profile.release]
 debug = true

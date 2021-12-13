@@ -24,6 +24,10 @@ pub fn main() {
         let solved = solve_second(&lines);
         println!("{:?}", solved)
     }
+    {
+        let solved = solve_second_fast(&lines);
+        println!("{:?}", solved)
+    }
 }
 
 #[inline]
@@ -240,17 +244,17 @@ mod tests {
         let lines = parse(utils::get_input(12, true));
 
         // start profiling
-        let guard = pprof::ProfilerGuard::new(100).unwrap();
+        // let guard = pprof::ProfilerGuard::new(100).unwrap();
 
         // run benchmark
         b.iter(|| solve_second(&lines));
 
         // build flamegraph
-        if let Ok(report) = guard.report().build() {
-            use std::fs::File;
-            let file = File::create("flamegraph.svg").unwrap();
-            report.flamegraph(file).unwrap();
-        };
+        // if let Ok(report) = guard.report().build() {
+        //     use std::fs::File;
+        //     let file = File::create("flamegraph.svg").unwrap();
+        //     report.flamegraph(file).unwrap();
+        // };
 
         // Put this into Cargo.toml if you want a useful flamegraph
         // [profile.release]
